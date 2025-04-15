@@ -64,9 +64,9 @@ jobs:
       # Step 5: Sync the zipped file to the S3 bucket
       - name: Deploy to S3
         run: |
-          aws s3 cp index.zip s3://proj3-group27-bucket-sdk/proj3/
-          aws s3 cp proj3_deployment_lambda.zip s3://proj3-group27-bucket-sdk/proj3/
-          aws s3 cp lambda_function.zip s3://proj3-group27-bucket-sdk/proj3/
-          aws s3 cp proj3_backend.yml s3://proj3-group27-bucket-sdk/proj3/templates/
-          aws s3 cp proj3_frontend.yml s3://proj3-group27-bucket-sdk/proj3/templates/
-          aws s3 cp proj3_amplify.yml s3://proj3-group27-bucket-sdk/proj3/templates/
+          aws s3 cp index.zip s3://proj3-group27-bucket/proj3/
+          aws s3 cp proj3_deployment_lambda.zip s3://proj3-group27-bucket/proj3/
+          aws s3 cp lambda_function.zip s3://proj3-group27-bucket/proj3/
+          aws s3 cp proj3_backend.yml s3://proj3-group27-bucket/proj3/templates/
+          aws s3 cp proj3_frontend.yml s3://proj3-group27-bucket/proj3/templates/
+          aws s3 cp proj3_amplify.yml s3://proj3-group27-bucket/proj3/templates/
