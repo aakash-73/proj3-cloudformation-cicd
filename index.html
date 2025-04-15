@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Participation Form</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #222328;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .btn-custom {
+            background: linear-gradient(135deg, #FF6D3A, #FF3A55);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .btn-custom:hover {
+            background: linear-gradient(135deg, #FF9E6D, #FF6975);
+        }
+
+        .form-control,
+        .form-control-file {
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .card-container {
+            margin-top: 20px;
+        }
+
+        .date-section {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .card {
+            width: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease-in-out;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card img {
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            object-fit: cover;
+            height: 180px;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="d-flex align-items-center justify-content-center vh-100">
+    <div class="container" id="welcome-screen">
+        <h2 class="mb-4">Welcome to Participation Form</h2>
+        <button class="btn btn-custom w-100" onclick="startForm()">Start</button>
+    </div>
+
+    <div class="container d-none" id="form-container">
+        <h2 class="mb-4">Participation Form</h2>
+        <form id="participation-form">
+            <div class="mb-3">
+                <input type="text" id="name" name="name" class="form-control" placeholder="Full Name" required>
+            </div>
+            <div class="mb-3">
+                <input type="email" id="email" name="email" class="form-control" placeholder="Email" required>
+            </div>
+            <div class="mb-3">
+                <input type="date" id="class_date" name="class_date" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <input type="file" id="uploaded_image" name="uploaded_image" accept="image/*" class="form-control-file"
+                    required>
+            </div>
+            <button type="button" class="btn btn-custom w-100 mb-2" id="add-btn" onclick="addEntry()"
+                disabled>Add Entry</button>
+            <button type="button" class="btn btn-custom w-100" id="verify-btn" onclick="verifyEntries()"
+                disabled>Verify Entries</button>
+        </form>
+    </div>
+
+    <div class="container mt-3 d-none" id="results-container">
+        <h3 class="mb-3">Stored Entries</h3>
+        <div id="cards-container"></div>
+    </div>
+
+    <script>
+        let entries = [];
+
+        function startForm() {
+            document.getElementById('welcome-screen').classList.add('d-none');
+            document.getElementById('form-container').classList.remove('d-none');
+        }
+
+        function checkInputs() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const class_date = document.getElementById('class_date').value;
+            const imageInput = document.getElementById('uploaded_image').files.length;
+            const isValid = name && email && class_date && imageInput;
+            document.getElementById('add-btn').disabled = !isValid;
+        }
+
+        document.querySelectorAll('#participation-form input').forEach(input => {
+            input.addEventListener('input', checkInputs);
+        });
+
+        function clearForm() {
+            document.getElementById('participation-form').reset();
+            checkInputs();
+        }
+
+        function addEntry() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const class_date = document.getElementById('class_date').value;
+            const imageInput = document.getElementById('uploaded_image');
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const entry = { name, email, class_date, image: event.target.result, status: "Pending" };
+                entries.push(entry);
+                renderEntries();
+            };
+            reader.readAsDataURL(imageInput.files[0]);
+            clearForm();
+        }
+
+        async function verifyEntries() {
+            for (let entry of entries) {
+                entry.status = "Processing...";
+                renderEntries();
+                const payload = {
+                    name: entry.name,
+                    email: entry.email,
+                    class_date: entry.class_date,
+                    uploaded_image_data: entry.image.split(',')[1]
+                };
+                console.log("Payload:", payload); 
+
+                const response = await fetch('https://kla14f4uua.execute-api.us-east-2.amazonaws.com/dev/process-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                console.log("API Response:", data);
+                
+                entry.status = response.ok ? (data.participation ? (data.name_match ? "✅ Participated Online" : data.face_match ? "✅ Participated Offline" : "❌ Not Participated") : "Not Participated") : "Error Occurred";
+                renderEntries();
+            }
+            clearForm();
+        }
+
+        function deleteEntry(index) {
+            entries.splice(index, 1);
+            renderEntries();
+        }
+
+        function renderEntries() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = "";
+            document.getElementById('results-container').classList.remove('d-none');
+
+            const groupedEntries = entries.reduce((acc, entry, index) => {
+                acc[entry.class_date] = acc[entry.class_date] || [];
+                acc[entry.class_date].push({ ...entry, index });
+                return acc;
+            }, {});
+
+            let anyEntries = false;
+
+            for (const [date, entriesList] of Object.entries(groupedEntries)) {
+                container.innerHTML += `<h4 class="date-section">${date}</h4>`;
+                const cards = entriesList.map(entry => 
+                    `<div class='card'>
+                        <button class="delete-btn" onclick="deleteEntry(${entry.index})">&times;</button>
+                        <img src='${entry.image}' class='card-img-top'>
+                        <div class='card-body text-center'>
+                            <h5>${entry.name}</h5>
+                            <p>Email: ${entry.email}</p>
+                            <p><strong>Status:</strong> ${entry.status}</p>
+                        </div>
+                    </div>`).join('');
+                container.innerHTML += `<div class="card-container d-flex flex-wrap gap-3">${cards}</div>`;
+                anyEntries = true;
+            }
+
+            // Hide the container if there are no entries
+            if (!anyEntries) {
+                document.getElementById('results-container').classList.add('d-none');
+            }
+
+            // Enable or disable the verify button
+            document.getElementById('verify-btn').disabled = !anyEntries;
+
+            checkInputs();
+        }
+    </script>
+</body>
+
+</html>

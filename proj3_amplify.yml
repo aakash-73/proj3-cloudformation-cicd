@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Deploy Lambda that triggers Amplify on S3 upload'
+
+Parameters:
+  SourceCodeBucket:
+    Type: String
+    Default: proj3-group27-bucket 
+
+Resources:
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'Proj3LambdaRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectAcl'
+                  - 's3:PutObjectAcl'
+                  - 's3:PutObjectVersionAcl'
+                Resource: !Sub arn:aws:s3:::${SourceCodeBucket}/*
+              - Effect: Allow
+                Action:
+                  - amplify:StartDeployment
+                Resource: '*'
+
+  TriggerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: 'StartAmplifyDeployment'
+      Runtime: python3.13
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: proj3_deployment_lambda.lambda_handler
+      Timeout: 30
+      Code:
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: proj3/proj3_deployment_lambda.zip
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref TriggerLambdaFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${SourceCodeBucket}
+
+Outputs:
+  BucketName:
+    Description: 'S3 Bucket Name for source code'
+    Value: !Ref SourceCodeBucket
+  LambdaARN:
+    Value: !GetAtt TriggerLambdaFunction.Arn
+    Description: ARN of the Amplify Trigger Lambda

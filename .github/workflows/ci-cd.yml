@@ -1,0 +1,72 @@
+name: CI/CD by Sync Zipped HTML to S3
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      # Step 2: Set up AWS CLI
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2  # Change to your preferred region
+
+      # Step 3: Install zip utility
+      - name: Install zip
+        run: sudo apt-get install -y zip
+
+      # Step 4: Zip the HTML file
+      - name: Zip the HTML file
+        run: |
+          if ls index.html 1> /dev/null 2>&1; then
+            zip -r index.zip index.html
+          else
+            echo "No HTML files found to zip."
+            exit 1
+          fi
+      # Step 5: Package and deploy the first Lambda function
+      - name: Package and deploy Lambda function 1
+        run: |
+          if [ -f lambda_function.py ]; then
+            zip -r lambda_function.zip lambda_function.py
+            aws lambda update-function-code \
+              --function-name ProcessImageFunction \
+              --zip-file fileb://lambda_function.zip
+          else
+            echo "Lambda function file not found."
+            exit 1
+          fi
+
+      # Step 6: Package and deploy the second Lambda function
+      - name: Package and deploy Lambda function 2
+        run: |
+          if [ -f proj3_deployment_lambda.py ]; then
+            zip -r proj3_deployment_lambda.zip proj3_deployment_lambda.py
+            aws lambda update-function-code \
+              --function-name StartAmplifyDeployment \
+              --zip-file fileb://proj3_deployment_lambda.zip
+          else
+            echo "proj3_deployment_lambda 2 file not found."
+            exit 1
+          fi
+
+      # Step 5: Sync the zipped file to the S3 bucket
+      - name: Deploy to S3
+        run: |
+          aws s3 cp index.zip s3://proj3-group27-bucket-sdk/proj3/
+          aws s3 cp proj3_deployment_lambda.zip s3://proj3-group27-bucket-sdk/proj3/
+          aws s3 cp lambda_function.zip s3://proj3-group27-bucket-sdk/proj3/
+          aws s3 cp proj3_backend.yml s3://proj3-group27-bucket-sdk/proj3/templates/
+          aws s3 cp proj3_frontend.yml s3://proj3-group27-bucket-sdk/proj3/templates/
+          aws s3 cp proj3_amplify.yml s3://proj3-group27-bucket-sdk/proj3/templates/

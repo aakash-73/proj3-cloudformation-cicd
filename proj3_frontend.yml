@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: A template as demenstration for proj 03, as an alternative solution to the process of demenstration for proj 02. This is for the frontend, to deploy the web app through Amplify.
+    
+Parameters:
+  S3BucketWithCode:
+    Type: String
+    Description: Name of the S3 bucket containing your source code
+    Default: proj3-group27-bucket 
+  
+  AppName:
+    Type: String
+    Description: Name of your Amplify application
+    Default: Proj3AmplifyIaC
+
+Resources:
+  # IAM Role for Amplify to Access S3 Code Bucket
+  AmplifyS3AccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "amplify.amazonaws.com"
+      Policies:
+        - PolicyName: group27-AmplifyS3AccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                Resource: !Sub "arn:aws:s3:::${S3BucketWithCode}/*" # Grant permission to your S3 bucket
+
+  # Amplify App to manage and deploy the website
+  AmplifyApp:
+    Type: 'AWS::Amplify::App'
+    Properties:
+      Name: !Ref AppName
+      Description: 'App for dynamic web deployment from S3 source code'
+      
+  # Amplify Branch for the app deployment
+  AmplifyBranch:
+    Type: 'AWS::Amplify::Branch'
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: 'dev'  # Define the branch name where the code will be deployed
+
+Outputs:
+  AmplifyAppId:
+    Description: ID of the Amplify App
+    Value: !GetAtt AmplifyApp.AppId
+  
+  AmplifyURL:
+    Description: Default domain of the Amplify App
+    Value: !GetAtt AmplifyApp.DefaultDomain
+  
+  BranchURL:
+    Description: URL to access the branch deployment
+    Value: !Sub https://${AmplifyBranch.BranchName}.${AmplifyApp.DefaultDomain}
